@@ -1,0 +1,32 @@
+# AMFC-Net-dfae_feb.yaml ablation 101: DFAE + CACF (A=1, B=0, C=1)
+nc: 4
+
+
+backbone:
+  - [-1, 1, Conv, [64, 3, 2]]
+  - [-1, 1, Conv, [128, 3, 2]]
+  - [-1, 1, DFAE, [128, 0.1]]                    # 2-DFAE
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [-1, 1, DFAE, [256, 0.1]]                    # 4-P3
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [-1, 1, DFAE, [512, 0.1]]                    # 6-P4
+  - [-1, 1, Conv, [1024, 3, 2]]
+  - [-1, 1, DFAE, [1024, 0.1]]                   # 8-DFAE
+  - [-1, 1, SPPF, [1024, 5]]                    # 9-P5
+
+head:
+  - [-1, 1, Conv, [256, 1, 1, null, 1, 1, false]] # 10
+  - [-1, 1, AIFI, [1024, 8]]                      # 11 original AIFI
+  - [-1, 1, Conv, [256, 1, 1]]                    # 12-Y5
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]       # 13
+  - [6, 1, Conv, [256, 1, 1, null, 1, 1, false]]  # 14 projected P4
+  - [[14, 13], 1, CACF, [256]]                    # 15-F4
+  - [-1, 1, Conv, [256, 1, 1]]                    # 16-Y4
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]       # 17
+  - [4, 1, Conv, [256, 1, 1, null, 1, 1, false]]  # 18 projected P3
+  - [[18, 17], 1, CACF, [256]]                    # 19-F3
+  - [-1, 1, Conv, [256, 3, 2]]                    # 20
+  - [[20, 15], 1, CACF, [256]]                    # 21-F4
+  - [-1, 1, Conv, [256, 3, 2]]                    # 22
+  - [[22, 12], 1, CACF, [256]]                    # 23-F5
+  - [[19, 21, 23], 1, RTDETRDecoder, [nc, 256, 300, 4, 8, 3]]

@@ -1,0 +1,37 @@
+# AMFC-Net-dfae_feb.yaml ablation 010: SFGN only (A=0, B=1, C=0)
+nc: 4
+
+
+backbone:
+  - [-1, 1, Conv, [64, 3, 2]]
+  - [-1, 1, Conv, [128, 3, 2]]
+  - [-1, 3, C2f, [128, True]]
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [-1, 6, C2f, [256, True]]              # 4-P3
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [-1, 6, C2f, [512, True]]              # 6-P4
+  - [-1, 1, Conv, [1024, 3, 2]]
+  - [-1, 3, C2f, [1024, True]]
+  - [-1, 1, SPPF, [1024, 5]]                    # 9-P5
+
+head:
+  - [-1, 1, Conv, [256, 1, 1, null, 1, 1, false]] # 10
+  - [-1, 1, SFG_AIFI, [1024, 8]]                  # B: SFGN replaces FFN
+  - [-1, 1, Conv, [256, 1, 1]]                    # 12-Y5
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]
+  - [6, 1, Conv, [256, 1, 1, null, 1, 1, false]]
+  - [[-2, -1], 1, Concat, [1]]
+  - [-1, 3, RepC3, [256, 0.5]]                    # 16-F4
+  - [-1, 1, Conv, [256, 1, 1]]                    # 17-Y4
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]
+  - [4, 1, Conv, [256, 1, 1, null, 1, 1, false]]
+  - [[-2, -1], 1, Concat, [1]]
+  - [-1, 3, RepC3, [256, 0.5]]                    # 21-F3
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [[-1, 17], 1, Concat, [1]]
+  - [-1, 3, RepC3, [256, 0.5]]                    # 24-F4
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [[-1, 12], 1, Concat, [1]]
+  - [-1, 3, RepC3, [256, 0.5]]                    # 27-F5
+  - [[21, 24, 27], 1, RTDETRDecoder, [nc, 256, 300, 4, 8, 3]]
+

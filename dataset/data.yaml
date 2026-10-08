@@ -1,0 +1,11 @@
+ dataset path
+path: /disk1/sxj
+train: /disk1/sxj/dataA/images/train
+val: /disk1/sxj//dataA/images/val
+test: ./dataset/images/test
+
+# number of classes
+nc: 4
+
+# class names
+names: ['DIE_INK','DIE_CRACK','DIE_BROKEN','NO_DIE']

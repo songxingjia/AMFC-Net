@@ -1,0 +1,45 @@
+# Parameters
+nc: 4  # chip defect classes; Ultralytics can override this from the dataset YAML
+
+
+# CSPDarknet-style backbone in which DFAE replaces each C2f_iRMB stage
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]                 # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]                # 1-P2/4
+  - [-1, 1, DFAE, [128, 0.1]]                 # 2 replaces C2f_iRMB
+  - [-1, 1, Conv, [256, 3, 2]]                # 3-P3/8
+  - [-1, 1, DFAE, [256, 0.1]]                 # 4-P3 replaces C2f_iRMB
+  - [-1, 1, Conv, [512, 3, 2]]                # 5-P4/16
+  - [-1, 1, DFAE, [512, 0.1]]                 # 6-P4 replaces C2f_iRMB
+  - [-1, 1, Conv, [1024, 3, 2]]               # 7-P5/32
+  - [-1, 1, DFAE, [1024, 0.1]]                # 8 replaces C2f_iRMB
+  - [-1, 1, SPPF, [1024, 5]]                  # 9-P5
+
+# SFG-AIFI feature interaction and CACF-based CCFM
+head:
+  # Feature interaction on P5. SFG_AIFI replaces the conventional FFN in AIFI.
+  - [-1, 1, Conv, [256, 1, 1, null, 1, 1, false]]  # 10 input_proj.2
+  - [-1, 1, FG_AIFI, [1024, 8]]                   # 11 SFG-AIFI
+  - [-1, 1, Conv, [256, 1, 1]]                     # 12 Y5
+
+  # Top-down pairwise fusion: P5 -> P4
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]        # 13 upsample Y5
+  - [6, 1, Conv, [256, 1, 1, null, 1, 1, false]]   # 14 projected P4
+  - [[14, 13], 1, CACF, [256]]                     # 15 P4 fusion, [F_s, F_h]
+
+  # Top-down pairwise fusion: fused P4 -> P3
+  - [-1, 1, Conv, [256, 1, 1]]                     # 16 Y4
+  - [-1, 1, nn.Upsample, [null, 2, nearest]]        # 17 upsample Y4
+  - [4, 1, Conv, [256, 1, 1, null, 1, 1, false]]   # 18 projected P3
+  - [[18, 17], 1, CACF, [256]]                     # 19 F3, [F_s, F_h]
+
+  # Bottom-up pairwise fusion: P3 -> P4
+  - [-1, 1, Conv, [256, 3, 2]]                     # 20 downsample F3
+  - [[20, 15], 1, CACF, [256]]                     # 21 F4, [F_s, F_h]
+
+  # Bottom-up pairwise fusion: P4 -> P5
+  - [-1, 1, Conv, [256, 3, 2]]                     # 22 downsample F4
+  - [[22, 12], 1, CACF, [256]]                     # 23 F5, [F_s, F_h]
+
+  - [[19, 21, 23], 1, RTDETRDecoder, [nc, 256, 300, 4, 8, 3]]  # 24 decoder
